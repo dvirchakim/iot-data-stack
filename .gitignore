@@ -1,0 +1,21 @@
+# Docker volumes
+influxdb-data/
+influxdb-config/
+n8n-data/
+homeassistant-data/
+
+# Environment variables
+.env
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log

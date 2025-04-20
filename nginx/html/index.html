@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Data Stack</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .card {
+            background: #f9f9f9;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .service {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .service:last-child {
+            border-bottom: none;
+        }
+        .service-name {
+            font-weight: bold;
+        }
+        .service-url {
+            color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <h1>IoT Data Stack</h1>
+    <div class="card">
+        <p>This server hosts the HTTP broker for ChirpStack integration. The webhook endpoint for ChirpStack is:</p>
+        <code>http://[server-ip]:8080/chirpstack-webhook</code>
+    </div>
+    
+    <h2>Services</h2>
+    <div class="card">
+        <div class="service">
+            <span class="service-name">n8n Workflow Automation</span>
+            <a href="http://[server-ip]:5678" class="service-url">http://[server-ip]:5678</a>
+        </div>
+        <div class="service">
+            <span class="service-name">InfluxDB</span>
+            <a href="http://[server-ip]:8086" class="service-url">http://[server-ip]:8086</a>
+        </div>
+        <div class="service">
+            <span class="service-name">Home Assistant</span>
+            <a href="http://[server-ip]:8123" class="service-url">http://[server-ip]:8123</a>
+        </div>
+    </div>
+    
+    <h2>Status</h2>
+    <div class="card">
+        <p>HTTP Broker is running.</p>
+        <p>For health check, visit: <a href="/health">/health</a></p>
+    </div>
+</body>
+</html>

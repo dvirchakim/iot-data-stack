@@ -1,0 +1,93 @@
+# Home Assistant Configuration for IoT Data Stack
+# This is a sample configuration - it will be created when Home Assistant first runs
+
+# Basic configuration
+default_config:
+
+# Configure InfluxDB integration
+influxdb:
+  api_version: 2
+  ssl: false
+  host: influxdb
+  port: 8086
+  token: my-super-secret-auth-token
+  organization: iot-org
+  bucket: iot-data
+  tags:
+    source: homeassistant
+  tags_attributes:
+    - friendly_name
+  include:
+    domains:
+      - sensor
+      - binary_sensor
+      - switch
+    entity_globs:
+      - sensor.lora_*
+    entities:
+      - sensor.temperature
+      - sensor.humidity
+      - sensor.pressure
+      - sensor.battery_level
+
+# HTTP Component for webhooks
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 172.16.0.0/12  # Docker network range
+
+# Webhook for receiving data from n8n
+webhook:
+
+# Sensor templates for ChirpStack data
+template:
+  - sensor:
+      - name: "LoRa Temperature"
+        unique_id: lora_temperature
+        state: "{{ states.webhook.chirpstack_data.attributes.temperature | float(0) }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        
+      - name: "LoRa Humidity"
+        unique_id: lora_humidity
+        state: "{{ states.webhook.chirpstack_data.attributes.humidity | float(0) }}"
+        unit_of_measurement: "%"
+        device_class: humidity
+        state_class: measurement
+        
+      - name: "LoRa Battery Level"
+        unique_id: lora_battery
+        state: "{{ states.webhook.chirpstack_data.attributes.battery | float(0) }}"
+        unit_of_measurement: "%"
+        device_class: battery
+        state_class: measurement
+
+# History and recorder components
+history:
+  include:
+    domains:
+      - sensor
+      - binary_sensor
+    entity_globs:
+      - sensor.lora_*
+
+recorder:
+  purge_keep_days: 30
+  include:
+    domains:
+      - sensor
+      - binary_sensor
+    entity_globs:
+      - sensor.lora_*
+
+# Dashboard configuration
+lovelace:
+  mode: yaml
+  dashboards:
+    lovelace-iot:
+      mode: yaml
+      title: IoT Sensors
+      icon: mdi:radio-tower
+      show_in_sidebar: true
+      filename: dashboards/iot-dashboard.yaml

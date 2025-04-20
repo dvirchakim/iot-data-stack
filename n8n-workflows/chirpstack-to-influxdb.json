@@ -1,0 +1,183 @@
+{
+  "name": "ChirpStack to InfluxDB",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "webhook/chirpstack",
+        "responseMode": "lastNode",
+        "responseCode": 200,
+        "responseData": "success"
+      },
+      "name": "ChirpStack Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract device information and sensor data\nconst data = $input.item.json.body;\nconst deviceInfo = data.deviceInfo || {};\nconst object = data.object || {};\n\n// Create a standardized data structure\nconst processedData = {\n  deviceName: deviceInfo.deviceName || 'unknown',\n  deviceEUI: deviceInfo.devEui || 'unknown',\n  applicationID: data.applicationId || 'unknown',\n  applicationName: data.applicationName || 'unknown',\n  timestamp: new Date().toISOString(),\n  // If this is an uplink message with decoded payload\n  payload: object.payload || {},\n  // Add raw data for debugging\n  raw: data\n};\n\n// Return the processed data\nreturn {json: processedData};"
+      },
+      "name": "Process Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// This function helps format data for InfluxDB\n// You may need to customize this based on your specific sensor data structure\n\nconst item = $input.item.json;\nconst payload = item.payload;\n\n// Create measurement points based on the payload structure\nconst points = [];\n\n// Process standard fields if they exist\nconst fields = {};\n\n// Add all payload fields as measurement fields\nfor (const [key, value] of Object.entries(payload)) {\n  // Only add numeric or boolean values as fields\n  if (typeof value === 'number' || typeof value === 'boolean') {\n    fields[key] = value;\n  }\n}\n\n// Only create a point if we have fields\nif (Object.keys(fields).length > 0) {\n  points.push({\n    measurement: 'sensor_data',\n    tags: {\n      device_id: item.deviceEUI,\n      device_name: item.deviceName,\n      application_id: item.applicationID,\n      application_name: item.applicationName\n    },\n    fields: fields,\n    timestamp: item.timestamp\n  });\n}\n\nreturn {points};"
+      },
+      "name": "Format for InfluxDB",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://influxdb:8086",
+        "token": "my-super-secret-auth-token",
+        "organization": "iot-org",
+        "bucket": "iot-data",
+        "operation": "write",
+        "precision": "ns",
+        "points": "={{ $json.points }}"
+      },
+      "name": "InfluxDB",
+      "type": "n8n-nodes-base.influxdb",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Object.keys($json.points).length > 0 }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Has Data?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        850,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://homeassistant:8123/api/webhook/chirpstack-data",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "Notify Home Assistant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log data for debugging\nconsole.log('Received data from ChirpStack:', $input.item.json.body);\n\n// Check if we have a valid payload\nif (!$input.item.json.body || !$input.item.json.body.object) {\n  console.log('Invalid or empty payload received');\n  return {json: {error: 'Invalid payload'}};\n}\n\n// Continue with the workflow\nreturn $input.item;"
+      },
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        350,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "ChirpStack Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Data": {
+      "main": [
+        [
+          {
+            "node": "Format for InfluxDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format for InfluxDB": {
+      "main": [
+        [
+          {
+            "node": "InfluxDB",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Has Data?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "InfluxDB": {
+      "main": [
+        [
+          {
+            "node": "Notify Home Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Data?": {
+      "main": [
+        [
+          {
+            "node": "Notify Home Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Process Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

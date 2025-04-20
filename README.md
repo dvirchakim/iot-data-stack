@@ -76,71 +76,18 @@ cd iot-data-stack
 Before setting up this stack, ensure you have:
 
 1. Ubuntu 22.04 (or similar Linux distribution)
-2. Docker and Docker Compose installed (installation instructions below)
+2. Docker and Docker Compose installed (installation instructions in the setup scripts)
 3. A working ChirpStack server (configured at 192.168.0.244:8080)
 
-## Manual Installation
+## Installation Options
 
-If you prefer to set up the stack manually instead of using the provided scripts, follow these steps:
+This project offers three ways to install and configure the IoT data stack:
 
-### 1. Install Docker and Docker Compose
+1. **Recommended**: Use the Ubuntu setup script for a fully automated installation
+2. **Alternative**: Use the deployment script for other Linux distributions
+3. **Manual Installation**: For those who prefer to set up each component manually
 
-```bash
-# Update package index
-sudo apt update
-
-# Install required packages
-sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
-
-# Add Docker's official GPG key
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-
-# Add Docker repository
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-# Update package index again
-sudo apt update
-
-# Install Docker
-sudo apt install -y docker-ce docker-ce-cli containerd.io
-
-# Add your user to the docker group to run Docker without sudo
-sudo usermod -aG docker $USER
-
-# Install Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/download/v2.18.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-
-# Verify installations
-docker --version
-docker-compose --version
-```
-
-Note: After adding your user to the docker group, you may need to log out and back in for the changes to take effect.
-
-### 2. Deploy the Stack
-
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/dvirchakim/iot-data-stack.git
-   cd iot-data-stack
-   ```
-
-2. Create the configuration directories:
-   ```bash
-   mkdir -p config/homeassistant/dashboards
-   ```
-
-3. Copy the configuration files:
-   ```bash
-   cp homeassistant/configuration.yaml config/homeassistant/
-   cp homeassistant/dashboards/iot-dashboard.yaml config/homeassistant/dashboards/
-   ```
-
-4. Start the stack:
-   ```bash
-   docker-compose up -d
-   ```
+For detailed manual installation instructions, see [MANUAL-INSTALLATION.md](MANUAL-INSTALLATION.md).
 
 ## Configuration
 

@@ -41,6 +41,7 @@ services:
       - NODE_ENV=production
       - WEBHOOK_URL=http://n8n:5678/
       - GENERIC_TIMEZONE=UTC
+      - N8N_SECURE_COOKIE=false
     networks:
       - iot-network
     depends_on:

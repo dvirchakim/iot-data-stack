@@ -158,6 +158,12 @@ sed -i "s/DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-auth-token/DOCKER_INF
 sed -i "s/N8N_BASIC_AUTH_USER=admin/N8N_BASIC_AUTH_USER=$n8n_username/" $PROJECT_DIR/docker-compose.yml
 sed -i "s/N8N_BASIC_AUTH_PASSWORD=strongpassword123/N8N_BASIC_AUTH_PASSWORD=$n8n_password/" $PROJECT_DIR/docker-compose.yml
 
+# Add N8N_SECURE_COOKIE=false if it doesn't exist
+if ! grep -q "N8N_SECURE_COOKIE=false" $PROJECT_DIR/docker-compose.yml; then
+    echo -e "${YELLOW}Adding N8N_SECURE_COOKIE=false to fix secure cookie issue...${NC}"
+    sed -i "/GENERIC_TIMEZONE=UTC/a \ \ \ \ \ \ - N8N_SECURE_COOKIE=false" $PROJECT_DIR/docker-compose.yml
+fi
+
 # Update Home Assistant configuration
 echo -e "${YELLOW}Updating Home Assistant configuration...${NC}"
 

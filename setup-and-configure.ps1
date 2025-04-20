@@ -218,6 +218,12 @@ $dockerComposeContent = $dockerComposeContent -replace "DOCKER_INFLUXDB_INIT_ADM
 $dockerComposeContent = $dockerComposeContent -replace "N8N_BASIC_AUTH_USER=admin", "N8N_BASIC_AUTH_USER=$n8nUsername"
 $dockerComposeContent = $dockerComposeContent -replace "N8N_BASIC_AUTH_PASSWORD=strongpassword123", "N8N_BASIC_AUTH_PASSWORD=$n8nPasswordText"
 
+# Add N8N_SECURE_COOKIE=false if it doesn't exist
+if (-not ($dockerComposeContent -match "N8N_SECURE_COOKIE=false")) {
+    Write-ColoredMessage "Adding N8N_SECURE_COOKIE=false to fix secure cookie issue..." -ForegroundColor Yellow
+    $dockerComposeContent = $dockerComposeContent -replace "- GENERIC_TIMEZONE=UTC", "- GENERIC_TIMEZONE=UTC`n      - N8N_SECURE_COOKIE=false"
+}
+
 # Write updated docker-compose.yml
 Set-Content -Path $dockerComposeFile -Value $dockerComposeContent
 

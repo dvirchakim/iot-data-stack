@@ -1,0 +1,93 @@
+title: IoT Sensors Dashboard
+views:
+  - path: default_view
+    title: Overview
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: >
+              # ChirpStack IoT Sensors
+              
+              This dashboard displays data from your LoRa sensors connected via ChirpStack.
+          
+          - type: entities
+            title: Sensor Status
+            entities:
+              - entity: sensor.lora_temperature
+                name: Temperature
+              - entity: sensor.lora_humidity
+                name: Humidity
+              - entity: sensor.lora_battery
+                name: Battery Level
+            
+      - type: horizontal-stack
+        cards:
+          - type: gauge
+            entity: sensor.lora_temperature
+            min: 0
+            max: 40
+            severity:
+              green: 0
+              yellow: 25
+              red: 30
+            name: Temperature
+            
+          - type: gauge
+            entity: sensor.lora_humidity
+            min: 0
+            max: 100
+            severity:
+              green: 30
+              yellow: 65
+              red: 80
+            name: Humidity
+            
+      - type: history-graph
+        title: Temperature History
+        entities:
+          - entity: sensor.lora_temperature
+        hours_to_show: 24
+        
+      - type: history-graph
+        title: Humidity History
+        entities:
+          - entity: sensor.lora_humidity
+        hours_to_show: 24
+        
+  - path: devices
+    title: Devices
+    cards:
+      - type: entities
+        title: All Sensors
+        entities:
+          - entity: sensor.lora_temperature
+          - entity: sensor.lora_humidity
+          - entity: sensor.lora_battery
+          
+      - type: glance
+        title: Battery Levels
+        entities:
+          - entity: sensor.lora_battery
+        state_color: true
+        
+  - path: analytics
+    title: Analytics
+    cards:
+      - type: statistics-graph
+        title: Temperature Statistics
+        entity: sensor.lora_temperature
+        period: day
+        stat_types:
+          - mean
+          - min
+          - max
+          
+      - type: statistics-graph
+        title: Humidity Statistics
+        entity: sensor.lora_humidity
+        period: day
+        stat_types:
+          - mean
+          - min
+          - max

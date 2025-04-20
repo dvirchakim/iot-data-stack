@@ -68,7 +68,7 @@ Note: After adding your user to the docker group, you may need to log out and ba
 
 ### ChirpStack HTTP Integration
 
-1. Log in to your ChirpStack server at 192.168.0.244:8080
+1. Log in to your ChirpStack server at chirpstack-server-ip:8080
 2. Navigate to your application
 3. Go to the "Integrations" tab
 4. Click "Add HTTP integration"

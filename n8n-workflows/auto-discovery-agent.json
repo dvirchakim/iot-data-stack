@@ -1,0 +1,291 @@
+{
+  "name": "ChirpStack Auto-Discovery Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "chirpstack-autodiscovery",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log incoming data for debugging\nconsole.log('Received data:', JSON.stringify($input.item.json, null, 2));\n\n// Extract the device information\nconst data = $input.item.json;\nconst deviceInfo = data.deviceInfo || {};\nconst payload = data.object?.payload || {};\n\n// Create a standardized device identifier\nconst deviceEUI = deviceInfo.devEui || 'unknown';\nconst deviceName = deviceInfo.deviceName || `device_${deviceEUI}`;\nconst applicationID = data.applicationId || 'unknown';\nconst applicationName = data.applicationName || 'unknown';\n\n// Create a metadata object\nconst metadata = {\n  deviceEUI,\n  deviceName,\n  applicationID,\n  applicationName,\n  timestamp: new Date().toISOString(),\n  rawData: data\n};\n\n// Analyze payload to detect sensor types\nconst detectedSensors = [];\nconst sensorData = {};\n\n// Common sensor type patterns\nconst sensorPatterns = {\n  temperature: ['temp', 'temperature', 'celsius', 'fahrenheit'],\n  humidity: ['humid', 'humidity', 'rh'],\n  pressure: ['press', 'pressure', 'bar', 'pascal', 'pa', 'hpa'],\n  battery: ['bat', 'battery', 'power', 'voltage', 'current'],\n  light: ['light', 'lux', 'illuminance', 'brightness'],\n  motion: ['motion', 'movement', 'pir', 'presence'],\n  door: ['door', 'window', 'contact', 'reed'],\n  gas: ['gas', 'co2', 'co', 'voc', 'tvoc'],\n  dust: ['dust', 'pm', 'pm2.5', 'pm10'],\n  gps: ['gps', 'location', 'latitude', 'longitude', 'lat', 'lon', 'lng'],\n  accelerometer: ['accel', 'accelerometer', 'acceleration', 'gyro', 'gyroscope'],\n  rssi: ['rssi', 'signal', 'snr', 'noise']\n};\n\n// Helper function to detect sensor type from key name\nfunction detectSensorType(key) {\n  const lowerKey = key.toLowerCase();\n  \n  for (const [sensorType, patterns] of Object.entries(sensorPatterns)) {\n    if (patterns.some(pattern => lowerKey.includes(pattern))) {\n      return sensorType;\n    }\n  }\n  \n  // If no match found, try to guess based on value type\n  return 'unknown';\n}\n\n// Helper function to determine value type\nfunction getValueType(value) {\n  if (typeof value === 'number') {\n    if (value >= 0 && value <= 100) return 'percentage';\n    if (value >= -50 && value <= 100) return 'temperature';\n    if (value >= 900 && value <= 1100) return 'pressure';\n  }\n  return typeof value;\n}\n\n// Process the payload to detect sensors\nfor (const [key, value] of Object.entries(payload)) {\n  // Skip non-numeric values for sensor data\n  if (typeof value !== 'number' && typeof value !== 'boolean') continue;\n  \n  const sensorType = detectSensorType(key);\n  const valueType = getValueType(value);\n  \n  // Create a unique sensor ID\n  const sensorId = `${deviceEUI}_${key}`;\n  \n  // Add to detected sensors\n  detectedSensors.push({\n    id: sensorId,\n    name: key,\n    type: sensorType,\n    valueType: valueType,\n    unit: determineUnit(sensorType, key, value)\n  });\n  \n  // Add to sensor data\n  sensorData[sensorId] = {\n    value: value,\n    timestamp: metadata.timestamp\n  };\n}\n\n// Helper function to determine unit based on sensor type\nfunction determineUnit(sensorType, key, value) {\n  const lowerKey = key.toLowerCase();\n  \n  switch (sensorType) {\n    case 'temperature':\n      return lowerKey.includes('fahrenheit') ? '°F' : '°C';\n    case 'humidity':\n      return '%';\n    case 'pressure':\n      if (lowerKey.includes('hpa') || value > 900 && value < 1100) return 'hPa';\n      if (lowerKey.includes('pa')) return 'Pa';\n      if (lowerKey.includes('bar')) return 'bar';\n      return 'hPa';\n    case 'battery':\n      if (value <= 100) return '%';\n      if (value < 15) return 'V';\n      return 'mV';\n    case 'light':\n      return 'lux';\n    case 'gas':\n      if (lowerKey.includes('co2')) return 'ppm';\n      if (lowerKey.includes('voc')) return 'ppb';\n      return 'ppm';\n    case 'dust':\n      return 'µg/m³';\n    case 'rssi':\n      return 'dBm';\n    default:\n      return '';\n  }\n}\n\n// Return the processed data\nreturn {\n  json: {\n    metadata,\n    detectedSensors,\n    sensorData\n  }\n};"
+      },
+      "name": "Analyze Incoming Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://influxdb:8086",
+        "allowUnauthorizedCerts": true,
+        "options": {}
+      },
+      "name": "InfluxDB",
+      "type": "n8n-nodes-base.influxdb",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ],
+      "credentials": {
+        "influxDbApi": {
+          "id": "1",
+          "name": "InfluxDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.metadata.deviceEUI }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "name": "Has Device ID?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "filePath": "/tmp/device_registry.json"
+      },
+      "name": "Read Device Registry",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        680,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Try to parse the device registry\nlet deviceRegistry = {};\ntry {\n  if ($input.item.binary && $input.item.binary.data) {\n    const content = Buffer.from($input.item.binary.data, 'base64').toString();\n    deviceRegistry = JSON.parse(content);\n  }\n} catch (error) {\n  console.log('Error parsing device registry or file not found, creating new one');\n  deviceRegistry = { devices: {}, sensors: {} };\n}\n\n// Get the analyzed data from the previous node\nconst analyzedData = $input.all()[0].json;\nconst { metadata, detectedSensors, sensorData } = analyzedData;\n\n// Check if device exists in registry, if not add it\nif (!deviceRegistry.devices[metadata.deviceEUI]) {\n  deviceRegistry.devices[metadata.deviceEUI] = {\n    name: metadata.deviceName,\n    applicationId: metadata.applicationID,\n    applicationName: metadata.applicationName,\n    firstSeen: metadata.timestamp,\n    lastSeen: metadata.timestamp\n  };\n} else {\n  // Update last seen timestamp\n  deviceRegistry.devices[metadata.deviceEUI].lastSeen = metadata.timestamp;\n}\n\n// Process detected sensors\ndetectedSensors.forEach(sensor => {\n  if (!deviceRegistry.sensors[sensor.id]) {\n    // New sensor discovered\n    deviceRegistry.sensors[sensor.id] = {\n      name: sensor.name,\n      deviceEUI: metadata.deviceEUI,\n      deviceName: metadata.deviceName,\n      type: sensor.type,\n      unit: sensor.unit,\n      firstSeen: metadata.timestamp,\n      lastSeen: metadata.timestamp,\n      lastValue: sensorData[sensor.id].value\n    };\n  } else {\n    // Update existing sensor\n    deviceRegistry.sensors[sensor.id].lastSeen = metadata.timestamp;\n    deviceRegistry.sensors[sensor.id].lastValue = sensorData[sensor.id].value;\n    \n    // If the unit was unknown before, try to update it\n    if (!deviceRegistry.sensors[sensor.id].unit && sensor.unit) {\n      deviceRegistry.sensors[sensor.id].unit = sensor.unit;\n    }\n  }\n});\n\n// Prepare data for InfluxDB\nconst points = [];\n\n// Add device status point\npoints.push({\n  measurement: 'device_status',\n  tags: {\n    device_id: metadata.deviceEUI,\n    device_name: metadata.deviceName,\n    application_id: metadata.applicationID,\n    application_name: metadata.applicationName\n  },\n  fields: {\n    online: 1,\n    last_seen: metadata.timestamp\n  },\n  timestamp: metadata.timestamp\n});\n\n// Add sensor data points\nObject.entries(sensorData).forEach(([sensorId, data]) => {\n  const sensor = deviceRegistry.sensors[sensorId];\n  if (sensor) {\n    points.push({\n      measurement: 'sensor_data',\n      tags: {\n        device_id: metadata.deviceEUI,\n        device_name: metadata.deviceName,\n        sensor_id: sensorId,\n        sensor_name: sensor.name,\n        sensor_type: sensor.type\n      },\n      fields: {\n        value: data.value\n      },\n      timestamp: data.timestamp\n    });\n  }\n});\n\n// Return updated registry and points for InfluxDB\nreturn {\n  json: {\n    deviceRegistry,\n    points,\n    metadata,\n    detectedSensors,\n    sensorData\n  }\n};"
+      },
+      "name": "Update Device Registry",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        900,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "filePath": "/tmp/device_registry.json",
+        "options": {}
+      },
+      "name": "Save Device Registry",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convert registry to binary data for saving\nconst deviceRegistry = $input.item.json.deviceRegistry;\nconst binaryData = Buffer.from(JSON.stringify(deviceRegistry, null, 2)).toString('base64');\n\nreturn {\n  json: $input.item.json,\n  binary: {\n    data: {\n      data: binaryData,\n      mimeType: 'application/json',\n      fileName: 'device_registry.json'\n    }\n  }\n};"
+      },
+      "name": "Prepare Registry File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "bucket": "iot-data",
+        "organization": "iot-org",
+        "precision": "ms",
+        "points": "={{ $json.points }}"
+      },
+      "name": "Write to InfluxDB",
+      "type": "n8n-nodes-base.influxdb",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        300
+      ],
+      "credentials": {
+        "influxDbApi": {
+          "id": "1",
+          "name": "InfluxDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://homeassistant:8123/api/webhook/auto_discovery",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "device_registry",
+              "value": "={{ $json.deviceRegistry }}"
+            },
+            {
+              "name": "detected_sensors",
+              "value": "={{ $json.detectedSensors }}"
+            },
+            {
+              "name": "sensor_data",
+              "value": "={{ $json.sensorData }}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ $json.metadata }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Notify Home Assistant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1340,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "content": "=## Auto-Discovery Results\n\n### Device Information\n- **Device EUI**: {{ $json.metadata.deviceEUI }}\n- **Device Name**: {{ $json.metadata.deviceName }}\n- **Application**: {{ $json.metadata.applicationName }} (ID: {{ $json.metadata.applicationID }})\n- **Timestamp**: {{ $json.metadata.timestamp }}\n\n### Detected Sensors\n{% for sensor in $json.detectedSensors %}\n- **{{ sensor.name }}**: {{ $json.sensorData[sensor.id].value }}{{ sensor.unit }} (Type: {{ sensor.type }})\n{% endfor %}\n\n### Registry Status\n- **Total Devices**: {{ Object.keys($json.deviceRegistry.devices).length }}\n- **Total Sensors**: {{ Object.keys($json.deviceRegistry.sensors).length }}\n\n### Data Successfully Stored\n- InfluxDB: {{ $json.points.length }} data points\n- Device Registry: Updated\n- Home Assistant: Notified",
+        "options": {}
+      },
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Analyze Incoming Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Incoming Data": {
+      "main": [
+        [
+          {
+            "node": "Has Device ID?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Device ID?": {
+      "main": [
+        [
+          {
+            "node": "Read Device Registry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Device Registry": {
+      "main": [
+        [
+          {
+            "node": "Update Device Registry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Device Registry": {
+      "main": [
+        [
+          {
+            "node": "Prepare Registry File",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Home Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Registry File": {
+      "main": [
+        [
+          {
+            "node": "Save Device Registry",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Write to InfluxDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write to InfluxDB": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Home Assistant": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

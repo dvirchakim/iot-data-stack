@@ -1,0 +1,88 @@
+# Home Assistant Auto-Discovery Configuration
+# Add this to your configuration.yaml file
+
+# Webhook for receiving auto-discovery notifications from n8n
+webhook:
+
+# Automation to handle auto-discovered devices and sensors
+automation:
+  - alias: "Process Auto-Discovered Devices"
+    trigger:
+      platform: webhook
+      webhook_id: auto_discovery
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "New Device Discovered"
+          message: >
+            Device: {{ trigger.json.metadata.deviceName }} ({{ trigger.json.metadata.deviceEUI }})
+            Application: {{ trigger.json.metadata.applicationName }}
+            Sensors: {{ trigger.json.detectedSensors | length }}
+      - service: script.process_auto_discovered_sensors
+        data:
+          sensors: "{{ trigger.json.detectedSensors }}"
+          sensor_data: "{{ trigger.json.sensorData }}"
+          device_info: "{{ trigger.json.metadata }}"
+
+# Script to process auto-discovered sensors and create entities
+script:
+  process_auto_discovered_sensors:
+    sequence:
+      - repeat:
+          count: "{{ sensors | length }}"
+          sequence:
+            - variables:
+                sensor: "{{ sensors[repeat.index-1] }}"
+                sensor_id: "{{ sensor.id }}"
+                sensor_name: "{{ sensor.name }}"
+                sensor_type: "{{ sensor.type }}"
+                sensor_unit: "{{ sensor.unit }}"
+                device_name: "{{ device_info.deviceName }}"
+                device_id: "{{ device_info.deviceEUI }}"
+            - service: input_text.set_value
+              target:
+                entity_id: input_text.last_discovered_sensor
+              data:
+                value: "{{ sensor_name }} ({{ sensor_type }})"
+            - service: mqtt.publish
+              data:
+                topic: "homeassistant/sensor/{{ device_id }}_{{ sensor_name }}/config"
+                payload: >
+                  {
+                    "name": "{{ device_name }} {{ sensor_name }}",
+                    "unique_id": "{{ sensor_id }}",
+                    "device": {
+                      "identifiers": ["{{ device_id }}"],
+                      "name": "{{ device_name }}",
+                      "manufacturer": "ChirpStack",
+                      "model": "Auto-Discovered"
+                    },
+                    "state_topic": "homeassistant/sensor/{{ device_id }}_{{ sensor_name }}/state",
+                    "unit_of_measurement": "{{ sensor_unit }}",
+                    "value_template": "{{ '{{ value_json.value }}' }}",
+                    "device_class": "{{ sensor_type if sensor_type in ['temperature', 'humidity', 'pressure', 'battery'] else none }}",
+                    "state_class": "measurement"
+                  }
+                retain: true
+            - service: mqtt.publish
+              data:
+                topic: "homeassistant/sensor/{{ device_id }}_{{ sensor_name }}/state"
+                payload: >
+                  {"value": {{ sensor_data[sensor_id].value }}}
+                retain: true
+
+# Helper entities for auto-discovery
+input_text:
+  last_discovered_sensor:
+    name: Last Discovered Sensor
+    initial: None
+
+# Dashboard for auto-discovered devices
+lovelace:
+  dashboards:
+    auto-discovered-devices:
+      mode: yaml
+      title: Auto-Discovered Devices
+      icon: mdi:radar
+      show_in_sidebar: true
+      filename: dashboards/auto-discovered-devices.yaml

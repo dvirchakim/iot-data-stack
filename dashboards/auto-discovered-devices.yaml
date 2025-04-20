@@ -1,0 +1,143 @@
+title: Auto-Discovered Devices
+views:
+  - title: Devices
+    path: devices
+    badges: []
+    cards:
+      - type: entities
+        title: Device Registry
+        entities:
+          - entity: input_text.last_discovered_sensor
+            name: Last Discovered Sensor
+        footer:
+          type: buttons
+          entities:
+            - entity: script.process_auto_discovered_sensors
+              name: Refresh Devices
+              icon: mdi:refresh
+      
+      - type: custom:auto-entities
+        card:
+          type: entities
+          title: Temperature Sensors
+          icon: mdi:thermometer
+        filter:
+          include:
+            - device_class: temperature
+        sort:
+          method: friendly_name
+      
+      - type: custom:auto-entities
+        card:
+          type: entities
+          title: Humidity Sensors
+          icon: mdi:water-percent
+        filter:
+          include:
+            - device_class: humidity
+        sort:
+          method: friendly_name
+      
+      - type: custom:auto-entities
+        card:
+          type: entities
+          title: Battery Levels
+          icon: mdi:battery
+        filter:
+          include:
+            - device_class: battery
+        sort:
+          method: friendly_name
+      
+      - type: custom:auto-entities
+        card:
+          type: entities
+          title: Other Sensors
+          icon: mdi:gauge
+        filter:
+          include:
+            - domain: sensor
+          exclude:
+            - device_class: temperature
+            - device_class: humidity
+            - device_class: battery
+        sort:
+          method: friendly_name
+  
+  - title: Analytics
+    path: analytics
+    badges: []
+    cards:
+      - type: history-graph
+        title: Temperature History
+        hours_to_show: 24
+        entities:
+          - entity: sensor.auto_entities_temperature
+            name: All Temperature Sensors
+      
+      - type: history-graph
+        title: Humidity History
+        hours_to_show: 24
+        entities:
+          - entity: sensor.auto_entities_humidity
+            name: All Humidity Sensors
+      
+      - type: history-graph
+        title: Battery Levels
+        hours_to_show: 72
+        entities:
+          - entity: sensor.auto_entities_battery
+            name: All Battery Levels
+      
+      - type: custom:apexcharts-card
+        title: Device Activity
+        graph_span: 24h
+        span:
+          start: day
+        apex_config:
+          chart:
+            type: heatmap
+          legend:
+            show: false
+        series:
+          - entity: sensor.device_activity
+            name: Device Activity
+            type: heatmap
+            data_generator: >
+              return entity.attributes.devices.map(device => {
+                return {
+                  name: device.name,
+                  data: device.activity
+                };
+              });
+  
+  - title: Debug
+    path: debug
+    badges: []
+    cards:
+      - type: markdown
+        title: Auto-Discovery Information
+        content: >
+          ## Auto-Discovery System
+
+          This dashboard displays devices and sensors that have been automatically discovered
+          by the n8n Auto-Discovery Agent. The system works as follows:
+
+          1. ChirpStack sends device data to the HTTP webhook
+          2. The n8n workflow analyzes the data and identifies sensor types
+          3. The device and sensors are registered in the device registry
+          4. Home Assistant is notified about the new devices/sensors
+          5. The dashboard is automatically updated with new entities
+
+          ### Troubleshooting
+
+          If devices are not appearing:
+          - Check the n8n logs: `docker-compose logs -f n8n`
+          - Verify ChirpStack is sending data to the correct webhook URL
+          - Check Home Assistant logs: `docker-compose logs -f homeassistant`
+      
+      - type: entities
+        title: Raw Device Data
+        entities:
+          - entity: sensor.raw_device_data
+            name: Latest Raw Data

@@ -13,7 +13,7 @@ Before setting up this stack, ensure you have:
 
 1. Ubuntu 22.04 (or similar Linux distribution)
 2. Docker and Docker Compose installed (installation instructions below)
-3. A working ChirpStack server (configured at 192.168.0.244:8080)
+3. A working ChirpStack server (configured at localhost:8080)
 
 ## Installation
 

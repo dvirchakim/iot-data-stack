@@ -13,7 +13,7 @@ Before setting up this stack, ensure you have:
 
 1. Ubuntu 22.04 (or similar Linux distribution)
 2. Docker and Docker Compose installed (installation instructions below)
-3. A working ChirpStack server (configured at 192.168.0.244:8080)
+3. A working ChirpStack server (configured at localhost:8080)
 
 ## Installation
 
@@ -68,7 +68,7 @@ Note: After adding your user to the docker group, you may need to log out and ba
 
 ### ChirpStack HTTP Integration
 
-1. Log in to your ChirpStack server at 192.168.0.244:8080
+1. Log in to your ChirpStack server at chirpstack-server-ip:8080
 2. Navigate to your application
 3. Go to the "Integrations" tab
 4. Click "Add HTTP integration"

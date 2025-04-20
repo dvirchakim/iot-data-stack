@@ -7,6 +7,14 @@ This Docker stack provides a complete solution for collecting, processing, and v
 - **HTTP Broker (Nginx)**: Handles HTTP requests from ChirpStack
 - **Home Assistant**: Dashboard and visualization platform
 
+## Features
+
+- **Complete IoT Pipeline**: From device data collection to visualization
+- **Auto-Discovery System**: Automatically detects and registers new devices and sensors
+- **Containerized Architecture**: Easy deployment and scaling
+- **Pre-configured Integration**: Ready-to-use ChirpStack integration
+- **Customizable Dashboards**: Visualize your IoT data with Home Assistant
+
 ## Quick Start
 
 The easiest way to get started is to use one of our setup scripts:
@@ -183,13 +191,37 @@ InfluxDB is automatically configured with the following settings:
 
 > **Note**: If you're using a non-English interface (like Hebrew), you may need to manually configure some settings. The setup scripts create a pre-configured Home Assistant instance that should work without additional configuration.
 
-## Security Considerations
+## Auto-Discovery System
 
-For a production environment, consider:
-1. Changing all default passwords in the docker-compose.yml file
-2. Setting up HTTPS with proper certificates
-3. Implementing network segmentation and firewall rules
-4. Using Docker secrets for sensitive information
+This stack includes a powerful auto-discovery system that automatically detects, classifies, and registers new devices and sensors from ChirpStack without requiring manual configuration.
+
+### How It Works
+
+1. **Automatic Detection**: When a new device sends data through ChirpStack, the system automatically detects it
+2. **Sensor Classification**: The system analyzes the payload to identify sensor types (temperature, humidity, etc.)
+3. **Dynamic Registration**: New devices and sensors are automatically registered in the system
+4. **Dashboard Integration**: The dashboard is automatically updated with new devices and sensors
+
+### Setting Up Auto-Discovery
+
+1. **Import the n8n Workflow**:
+   - Access n8n at `http://your-server-ip:5678`
+   - Go to Workflows → Import From File
+   - Select the file `n8n-workflows/auto-discovery-agent.json`
+   - Save and activate the workflow
+
+2. **Enable in Home Assistant**:
+   - Add the contents of `home-assistant-auto-discovery.yaml` to your Home Assistant configuration
+   - Copy the dashboard file to your dashboards directory:
+     ```bash
+     cp dashboards/auto-discovered-devices.yaml /opt/iot-data-stack/config/homeassistant/dashboards/
+     ```
+   - Restart Home Assistant: `docker-compose restart homeassistant`
+
+3. **Configure ChirpStack**:
+   - Set the HTTP integration URL to: `http://your-server-ip:8080/chirpstack-webhook`
+
+For detailed instructions, see [README-auto-discovery.md](README-auto-discovery.md).
 
 ## Maintenance
 
@@ -198,6 +230,14 @@ For a production environment, consider:
 - To restart a service: `docker-compose restart [service_name]`
 - To stop the stack: `docker-compose down`
 - To stop and remove volumes: `docker-compose down -v` (caution: this will delete all data)
+
+## Security Considerations
+
+For a production environment, consider:
+1. Changing all default passwords in the docker-compose.yml file
+2. Setting up HTTPS with proper certificates
+3. Implementing network segmentation and firewall rules
+4. Using Docker secrets for sensitive information
 
 ## Troubleshooting
 
@@ -230,14 +270,23 @@ For a production environment, consider:
      sudo ufw allow 8123/tcp  # Home Assistant
      ```
 
+5. **n8n secure cookie issue**
+   - If you see a warning about secure cookies in n8n, restart the stack:
+     ```bash
+     docker-compose down
+     docker-compose up -d
+     ```
+   - The stack is pre-configured to fix this issue with `N8N_SECURE_COOKIE=false`
+
 ### Getting Help
 
 If you encounter issues not covered in this troubleshooting section:
 1. Check the logs of all services: `docker-compose logs`
-2. Open an issue on GitHub with detailed information about your problem
-3. Include relevant logs and your environment details
+2. See the [fix-webhook.md](fix-webhook.md) guide for webhook-specific issues
+3. Refer to the [README-auto-discovery.md](README-auto-discovery.md) for auto-discovery issues
+4. Open an issue on GitHub with detailed information about your problem
+5. Include relevant logs and your environment details
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
-

@@ -30,7 +30,7 @@
     },
     {
       "parameters": {
-        "functionCode": "// This function helps format data for InfluxDB\n// You may need to customize this based on your specific sensor data structure\n\nconst item = $input.item.json;\nconst payload = item.payload;\n\n// Create measurement points based on the payload structure\nconst points = [];\n\n// Process standard fields if they exist\nconst fields = {};\n\n// Add all payload fields as measurement fields\nfor (const [key, value] of Object.entries(payload)) {\n  // Only add numeric or boolean values as fields\n  if (typeof value === 'number' || typeof value === 'boolean') {\n    fields[key] = value;\n  }\n}\n\n// Only create a point if we have fields\nif (Object.keys(fields).length > 0) {\n  points.push({\n    measurement: 'sensor_data',\n    tags: {\n      device_id: item.deviceEUI,\n      device_name: item.deviceName,\n      application_id: item.applicationID,\n      application_name: item.applicationName\n    },\n    fields: fields,\n    timestamp: item.timestamp\n  });\n}\n\nreturn {points};"
+        "functionCode": "// This function helps format data for InfluxDB\n// You may need to customize this based on your specific sensor data structure\n\nconst item = $input.item.json;\nconst payload = item.payload || {};\n\n// Create measurement points based on the payload structure\nconst points = [];\n\n// Process standard fields if they exist\nconst fields = {};\n\n// Add all payload fields as measurement fields\nif (payload) {\n  for (const [key, value] of Object.entries(payload)) {\n    // Only add numeric or boolean values as fields\n    if (typeof value === 'number' || typeof value === 'boolean') {\n      fields[key] = value;\n    }\n  }\n}\n\n// Only create a point if we have fields\nif (Object.keys(fields).length > 0) {\n  points.push({\n    measurement: 'sensor_data',\n    tags: {\n      device_id: item.deviceEUI,\n      device_name: item.deviceName,\n      application_id: item.applicationID,\n      application_name: item.applicationName\n    },\n    fields: fields,\n    timestamp: item.timestamp\n  });\n}\n\n// Always return an array, even if empty\nreturn {points: points};"
       },
       "name": "Format for InfluxDB",
       "type": "n8n-nodes-base.function",
@@ -83,7 +83,31 @@
         "url": "http://homeassistant:8123/api/webhook/chirpstack-data",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "options": {}
+        "options": {},
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "temperature",
+              "value": "={{ $json.points[0]?.fields?.temperature || 0 }}"
+            },
+            {
+              "name": "humidity",
+              "value": "={{ $json.points[0]?.fields?.humidity || 0 }}"
+            },
+            {
+              "name": "battery",
+              "value": "={{ $json.points[0]?.fields?.battery || 0 }}"
+            },
+            {
+              "name": "device_id",
+              "value": "={{ $json.points[0]?.tags?.device_id || 'unknown' }}"
+            },
+            {
+              "name": "device_name",
+              "value": "={{ $json.points[0]?.tags?.device_name || 'unknown' }}"
+            }
+          ]
+        }
       },
       "name": "Notify Home Assistant",
       "type": "n8n-nodes-base.httpRequest",

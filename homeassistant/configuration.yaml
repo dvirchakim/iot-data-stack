@@ -44,21 +44,21 @@ template:
   - sensor:
       - name: "LoRa Temperature"
         unique_id: lora_temperature
-        state: "{{ states.webhook.chirpstack_data.attributes.temperature | float(0) }}"
+        state: "{{ states('webhook.chirpstack-data').attributes.temperature | float(0) }}"
         unit_of_measurement: "°C"
         device_class: temperature
         state_class: measurement
         
       - name: "LoRa Humidity"
         unique_id: lora_humidity
-        state: "{{ states.webhook.chirpstack_data.attributes.humidity | float(0) }}"
+        state: "{{ states('webhook.chirpstack-data').attributes.humidity | float(0) }}"
         unit_of_measurement: "%"
         device_class: humidity
         state_class: measurement
         
       - name: "LoRa Battery Level"
         unique_id: lora_battery
-        state: "{{ states.webhook.chirpstack_data.attributes.battery | float(0) }}"
+        state: "{{ states('webhook.chirpstack-data').attributes.battery | float(0) }}"
         unit_of_measurement: "%"
         device_class: battery
         state_class: measurement
